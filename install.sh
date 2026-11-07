@@ -72,6 +72,8 @@ prepare_musl_source() {
     -e 's/drand48_r (\&this_job_thread->rand_data, \&t);/t = erand48 (this_job_thread->rand_data);/' \
     -e 's/srand48_r (rdtsc () \^ lrand48 (), \&JT->rand_data);/unsigned long long seed = rdtsc () ^ lrand48 ();\n  JT->rand_data[0] = 0x330e;\n  JT->rand_data[1] = seed;\n  JT->rand_data[2] = seed >> 16;/' \
     "$1/jobs/jobs.c"
+  sed -i 's/connect (sockets\[i\], \&addr,/connect (sockets[i], (struct sockaddr *) \&addr,/' \
+    "$1/net/net-tcp-rpc-ext-server.c"
 }
 links() {
   printf '\n  IPv4 链接：\n  https://t.me/proxy?server=%s&port=%s&secret=dd%s\n' "$IPV4" "$PORT" "$SECRET"
