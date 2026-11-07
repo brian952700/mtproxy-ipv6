@@ -61,3 +61,33 @@ jobs:
           else:
               raise AssertionError('IPv6 client connection unexpectedly accepted')
           PY
+
+
+  alpine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke test on Alpine 3.22
+        run: |
+          docker run --rm --ulimit nofile=131072:131072 \
+            -v "$PWD:/repo:ro" alpine:3.22 sh -ec '
+              apk add --no-cache bash git curl build-base linux-headers openssl-dev zlib-dev openssl ca-certificates python3
+              cd /repo
+              bash -n install.sh
+              bash install.sh --preview
+              git clone --no-checkout https://github.com/TelegramMessenger/MTProxy.git /tmp/source
+              git -C /tmp/source checkout --detach "$(sed -n "s/^UPSTREAM_COMMIT=//p" install.sh)"
+              sed -n "/^prepare_musl_source()/,/^}/p" install.sh > /tmp/musl.sh
+              bash -c ". /tmp/musl.sh; prepare_musl_source /tmp/source"
+              cd /tmp/source
+              make -j2 CC="gcc -fcommon"
+              curl -fLsS --retry 3 https://core.telegram.org/getProxySecret -o proxy-secret
+              curl -fLsS --retry 3 https://core.telegram.org/getProxyConfig -o proxy-multi.conf
+              objs/bin/mtproto-proxy -u nobody -p 18888 -H 20443 -S "$(openssl rand -hex 16)" --aes-pwd proxy-secret proxy-multi.conf -M 1 >proxy.log 2>&1 &
+              for attempt in 1 2 3 4 5; do
+                if python3 -c "import socket; socket.create_connection((\"127.0.0.1\",20443),2).close()"; then exit 0; fi
+                sleep 1
+              done
+              cat proxy.log
+              exit 1
+            '
