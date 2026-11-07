@@ -1,80 +1,52 @@
-# IPv6-only MTProxy 一键安装
+# Telegram 官方 MTProxy 双栈一键安装
 
-Debian 12 及以上，amd64 / arm64，原生 [mtg](https://github.com/9seconds/mtg) v2.3.0 + systemd，无 Docker 或面板。
+Debian 12 及以上、AMD64，使用 [Telegram 官方 C 版 MTProxy](https://github.com/TelegramMessenger/MTProxy)，IPv4 + IPv6 双栈监听，分别生成两个 `dd` 随机填充模式链接。默认端口 **10443**，允许 **10001–65535**。
+
+仓库名沿用 `mtproxy-ipv6`，`install.sh` 已替换为官方实现。旧 mtg 脚本可在 Git 历史中找到。
 
 ## 一键安装
 
-使用 root 登录后运行（需要预装 curl）：
+root 用户执行（需要 curl）：
 
 ```bash
-curl -fLsS https://raw.githubusercontent.com/brian952700/mtproxy-ipv6/main/install.sh -o /tmp/mtproxy-ipv6-install.sh && bash /tmp/mtproxy-ipv6-install.sh
+curl -fLsS https://raw.githubusercontent.com/brian952700/mtproxy-ipv6/main/install.sh -o /tmp/telegram-mtproxy-install.sh && bash /tmp/telegram-mtproxy-install.sh
 ```
 
-默认端口 **10443**，只绑定本机具体公网 IPv6，Telegram 出口只走 IPv6。云安全组和本机防火墙需放行 **IPv6 TCP 10443**；脚本不会改动防火墙规则。
+自动识别公网 IPv4 和本机公网 IPv6。交互终端中可修改端口、IPv4；有多个 IPv6 时编号选择。两个链接使用相同端口和密钥。IPv6 地址对应当前服务器，不会使用之前其他 VPS 的地址。
 
-## 安装界面
-
-在交互式终端运行时，按五个步骤显示进度，依次输入端口、FakeTLS 域名（回车使用默认值）；检测到多个公网 IPv6 时通过编号选择。蓝色表示步骤，绿色表示成功，黄色表示提示，红色表示失败；每条信息同时带文字或符号，非彩色终端也可阅读。
-
-APT、下载、服务命令和 mtg 诊断的详细输出保存到 `/var/log/mtproxy-ipv6-install.XXXXXX.log`（随机文件名，权限 600）。命令失败时显示最近 12 行日志和完整路径。诊断提示未通过时可用 `sudo less /var/log/mtproxy-ipv6-install.*.log` 查看。完成页分别列出服务状态、本机监听状态和外网待验证状态，再单独显示连接信息和管理命令。
-
-设置任意 `PORT`、`IPV6`、`TLS_DOMAIN`，或使用 `NONINTERACTIVE=1` / `--non-interactive`，将跳过所有提问；标准输入或输出不是终端时也自动跳过。无人值守示例：
+指定参数并跳过交互：
 
 ```bash
-PORT=20000 bash /tmp/mtproxy-ipv6-install.sh --non-interactive
+IPV4='66.187.4.8' PORT=10443 bash /tmp/telegram-mtproxy-install.sh --non-interactive
 ```
 
-禁用颜色可设置 `NO_COLOR=1`。无需 root、无需联网即可预览界面（不安装、不修改系统）：
+也可设置 `IPV6='本机公网IPv6'`。公网 IPv4 自动检测使用 ifconfig.co；共享出口或 NAT 环境请填入实际入口地址，并确保外部端口映射正确。没有本机公网 IPv6 会退出，不会把原服务改成不完整的双栈配置。
+
+## 安装与迁移
+
+- 首次安装下载官方仓库，固定源码提交 `69f2f083b57bbd94932cb9f4f32155f33e719ff1`，使用 `gcc -fcommon` 编译以兼容现代 GCC；不修改官方源码。
+- 仅支持 AMD64：官方 Makefile 包含 x86 专用指令选项。
+- 已存在 `/opt/telegram-mtproxy/objs/bin/mtproto-proxy` 时复用，不自动升级现有程序。已有 `client-secret` 保留，格式异常则退出。
+- 运行参数采用官方的 `-6 -u nobody -p 8888 -H 端口 -S 密钥 --aes-pwd … -M 1`。`-6` 开启能接收 IPv4 的 IPv6 双栈套接字；Telegram 上游连接仍依官方配置，不强制 IPv6 出口。
+- 使用官方 `getProxySecret` 和 `getProxyConfig`，不调用 GitHub API。每次运行重新获取这两份服务配置。官方建议数据中心配置定期更新，可每天重新获取；本脚本未安装定时更新任务。
+- 写入配置前备份到 `/opt/telegram-mtproxy/backup.*`；启动失败尝试恢复旧配置及原先运行的服务。
+- 会重写 `telegram-mtproxy.service`，迁移并备份此前聊天提供的 `dual-stack.conf`。成功切换后禁用运行中的旧 `mtproxy-ipv6.service` / `tg-python.service`。其他自定义 systemd drop-in 不改动，若存在可能影响最终服务配置。
+- 中文分步进度，命令详细输出保存到 root 专属的 `/var/log/telegram-mtproxy-install.*.log`；支持 `NO_COLOR=1` 和 `--preview`（预览不安装、不联网）。
+
+## 连接和防火墙
+
+**放行 IPv4、IPv6 TCP 10443**（或你选择的端口），同时检查云安全组和系统防火墙。脚本不会修改任何防火墙规则。统计端口 8888 不是客户端连接端口，不需要公开。
 
 ```bash
-bash /tmp/mtproxy-ipv6-install.sh --preview
+sudo cat /opt/telegram-mtproxy/access-dual-stack.txt
+systemctl status telegram-mtproxy.service
+journalctl -u telegram-mtproxy.service -n 50 --no-pager
 ```
 
-交互运行时请使用上方“下载后执行”的命令；通过管道输入脚本会自动采用无人值守模式。
+IPv4 和 IPv6 链接分开显示。部分 Telegram 客户端不能正确导入 IPv6 字面量链接时，可手动填入 IPv6 地址、端口及 `dd` 开头的完整密钥。IPv6 连接需要客户端具备公网 IPv6 网络。
 
-自定义端口（仅允许 **10001–65535**）、IPv6 和 FakeTLS 域名：
+配置和链接文件包含密钥，请勿上传仓库。安装输出的监听检查仅证明服务在本机运行，外网连通性以 Telegram 实际连接为准。
 
-```bash
-PORT=20000 IPV6='你的公网IPv6' TLS_DOMAIN='www.cloudflare.com' bash /tmp/mtproxy-ipv6-install.sh
-```
+## 验证
 
-多个 IPv6 时建议明确设置 `IPV6`；否则自动选取首个已配置的公网 IPv6。地址变更后需修改配置并重启服务。默认域名只是可用的示例，不保证与 VPS 地址相符或能够规避识别，可换成适合自己网络的 TLS 域名。
-
-## 网络要求
-
-- 客户端必须能访问公网 IPv6；VPS 必须能经 IPv6 连接 Telegram 和所选 FakeTLS 域名。
-- **运行走 IPv6，不等于下载源支持 IPv6。** 安装时 Debian 软件源、GitHub 发布附件必须可达。脚本直接下载固定版本的官方发布包和校验清单，不请求 GitHub API。没有 IPv4 的 VPS 需要可用 NAT64/DNS64、HTTP(S) 下载代理等联网条件。脚本不会自动使用第三方镜像或更改 DNS。
-- 如需通过已有代理下载 GitHub，运行前设置 `https_proxy`（例如 `export https_proxy=http://[代理IPv6]:3128`）。APT 代理须按系统设置另行配置。脚本的 IPv6 出口检测会主动绕过下载代理。
-- DNS 使用系统解析器；DNS、APT 和安装下载的地址族取决于系统配置。`only-ipv6` 限制的是 mtg 连接 Telegram 的出口。
-- 高端口满足此脚本需求，但 FakeTLS 使用高端口不等于普通 HTTPS 的 443，不能承诺长期可用。
-
-## 安装行为
-
-安装最少依赖，下载固定版本的官方发行包，核对该版本官方 SHA256 清单，生成随机 FakeTLS secret，执行 `mtg doctor` 后安装。诊断未通过会显示提示并继续（例如外部伪装域名与 VPS 地址不匹配）；请检查输出中的网络错误。SHA256 用于验证下载一致性，不能替代独立签名验证。配置不会上传 GitHub。
-
-服务以 systemd 动态用户运行，通过 `LoadCredential` 读取 root 专属配置，启用自动重启。重复安装会退出，防止覆盖密钥。安装后检测本机监听；**未进行外部 Telegram 客户端连接测试**。
-
-## 管理
-
-```bash
-systemctl status mtproxy-ipv6
-systemctl restart mtproxy-ipv6
-journalctl -u mtproxy-ipv6 -n 50 --no-pager
-sudo cat /opt/mtproxy-ipv6/access.txt
-sudo /opt/mtproxy-ipv6/mtg doctor /opt/mtproxy-ipv6/config.toml
-```
-
-安装完成会显示连接地址、端口、密钥和导入链接。部分客户端不支持链接中的 IPv6 字面量，可手动填写地址，或使用只配置 AAAA 记录的域名。不要把密钥、配置和连接信息提交到公开仓库。
-
-卸载（会删除此服务的配置和密钥）：
-
-```bash
-systemctl disable --now mtproxy-ipv6.service
-rm -f /etc/systemd/system/mtproxy-ipv6.service
-rm -rf /opt/mtproxy-ipv6
-systemctl daemon-reload
-```
-
-## 验证范围
-
-仓库提供 Bash 语法检查和 ShellCheck CI。安装需要真实 Debian、systemd 和可达 Telegram 的 IPv6 网络；CI 不声称替代真实服务器及 Telegram 客户端验收。
+CI 检查 Bash 语法、ShellCheck、终端预览/颜色开关、两个链接的地址及密钥格式，并在 Debian 12 和 Debian 13 容器中编译固定提交的官方源码。CI 不替代真实 VPS 的路由、防火墙及 Telegram 客户端测试。
