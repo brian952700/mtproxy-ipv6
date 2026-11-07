@@ -16,4 +16,4 @@ curl -fLsS https://raw.githubusercontent.com/brian952700/mtproxy-ipv6/main/insta
 
 先执行 `apk add --no-cache bash curl ca-certificates`，再运行上面的一键安装命令。服务使用 `rc-service telegram-mtproxy status` 查看，日志位于 `/var/log/telegram-mtproxy.log`。
 
-Alpine 使用 musl。编译时移除官方程序依赖 glibc 的堆栈回溯代码，保留代理功能。
+Alpine 使用 musl。编译时移除依赖 glibc 的堆栈回溯代码，并改用 musl 提供的线程随机数接口。

@@ -65,6 +65,13 @@ trap 'die "第 $LINENO 行失败。日志：${LOG_FILE:-尚未创建}"' ERR
 header() { printf '\n  Telegram MTProxy · 仅 IPv4 接入\n  Debian 12+ / Alpine 3.22+ · x86_64\n  ──────────────────────────────────────────────\n'; }
 prepare_musl_source() {
   sed -i '/^#include <execinfo.h>/d; /  void \*buffer\[64\];/,/  kwrite (2, "-------------------------------/d' "$1/common/server-functions.c"
+  sed -i 's/struct drand48_data rand_data;/unsigned short rand_data[3];/' "$1/jobs/jobs.h"
+  sed -i \
+    -e 's/lrand48_r (\&this_job_thread->rand_data, \&t);/t = nrand48 (this_job_thread->rand_data);/' \
+    -e 's/mrand48_r (\&this_job_thread->rand_data, \&t);/t = jrand48 (this_job_thread->rand_data);/' \
+    -e 's/drand48_r (\&this_job_thread->rand_data, \&t);/t = erand48 (this_job_thread->rand_data);/' \
+    -e 's/srand48_r (rdtsc () \^ lrand48 (), \&JT->rand_data);/unsigned long long seed = rdtsc () ^ lrand48 ();\n  JT->rand_data[0] = 0x330e;\n  JT->rand_data[1] = seed;\n  JT->rand_data[2] = seed >> 16;/' \
+    "$1/jobs/jobs.c"
 }
 links() {
   printf '\n  IPv4 链接：\n  https://t.me/proxy?server=%s&port=%s&secret=dd%s\n' "$IPV4" "$PORT" "$SECRET"
