@@ -160,7 +160,7 @@ WorkingDirectory=$BASE
 ExecStart=$BASE/objs/bin/mtproto-proxy -6 -u nobody -p 8888 -H $PORT -S $SECRET --aes-pwd $BASE/proxy-secret $BASE/proxy-multi.conf -M 1
 Restart=on-failure
 RestartSec=5
-LimitNOFILE=65536
+LimitNOFILE=131072
 
 [Install]
 WantedBy=multi-user.target
