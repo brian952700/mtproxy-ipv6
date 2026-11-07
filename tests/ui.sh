@@ -31,11 +31,11 @@ fi
 printf 'ID=debian\nVERSION_ID=12\nVERSION="12 (bookworm)"\n' >"$tmp/os-release"
 awk 'index($0,"[[ $EUID") == 1 {exit} {print}' install.sh >"$tmp/version-check.sh"
 cat >>"$tmp/version-check.sh" <<'EOF'
-tmp=$1
+tmp=$TEST_TMP
 . "$tmp/os-release"
 run() { printf '%s\n' "$@"; }
 EOF
 awk 'index($0,"run ")==1 && index($0,"api.github.com/repos/9seconds/mtg/releases/tags/") {print}' install.sh >>"$tmp/version-check.sh"
-bash "$tmp/version-check.sh" "$tmp" >"$tmp/release-request"
+TEST_TMP=$tmp bash "$tmp/version-check.sh" >"$tmp/release-request"
 grep -Fxq 'https://api.github.com/repos/9seconds/mtg/releases/tags/v2.3.0' "$tmp/release-request"
 printf 'Preview, help, invalid options, terminal colors, NO_COLOR and Debian release URL regression passed.\n'
