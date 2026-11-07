@@ -96,8 +96,11 @@ concurrency = 512
 [network]
 dns = ""
 EOF
-# Validate connectivity before touching the service installation.
-"$tmp/mtg" doctor "$tmp/config.toml" || die 'mtg 网络诊断未通过，尚未安装服务。'
+# Doctor also treats an SNI/public-IP mismatch as a failure. Report it
+# without blocking installations using an external fronting domain.
+if ! "$tmp/mtg" doctor "$tmp/config.toml"; then
+  printf '提示：mtg doctor 有未通过项，请检查上方诊断；继续安装并验证本机监听。\n' >&2
+fi
 install -d -m 700 "$BASE"
 install -m 755 "$tmp/mtg" "$BASE/mtg"
 install -m 600 "$tmp/config.toml" "$BASE/config.toml"

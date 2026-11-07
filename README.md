@@ -30,7 +30,7 @@ PORT=20000 IPV6='你的公网IPv6' TLS_DOMAIN='www.cloudflare.com' bash /tmp/mtp
 
 ## 安装行为
 
-安装最少依赖，下载固定版本的官方发行包，核对该版本官方 SHA256 清单，生成随机 FakeTLS secret，执行 `mtg doctor` 后安装。SHA256 用于验证下载一致性，不能替代独立签名验证。配置不会上传 GitHub。
+安装最少依赖，下载固定版本的官方发行包，核对该版本官方 SHA256 清单，生成随机 FakeTLS secret，执行 `mtg doctor` 后安装。诊断未通过会显示提示并继续（例如外部伪装域名与 VPS 地址不匹配）；请检查输出中的网络错误。SHA256 用于验证下载一致性，不能替代独立签名验证。配置不会上传 GitHub。
 
 服务以 systemd 动态用户运行，通过 `LoadCredential` 读取 root 专属配置，启用自动重启。重复安装会退出，防止覆盖密钥。安装后检测本机监听；**未进行外部 Telegram 客户端连接测试**。
 
