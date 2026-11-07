@@ -16,7 +16,9 @@ jobs:
     strategy:
       matrix:
         debian: ['12', '13']
-    container: debian:${{ matrix.debian }}
+    container:
+      image: debian:${{ matrix.debian }}
+      options: --ulimit nofile=131072:131072 --sysctl net.ipv6.conf.all.disable_ipv6=0
     steps:
       - run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates build-essential libssl-dev zlib1g-dev curl python3 openssl
       - uses: actions/checkout@v4
