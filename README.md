@@ -12,6 +12,26 @@ curl -fLsS https://raw.githubusercontent.com/brian952700/mtproxy-ipv6/main/insta
 
 默认端口 **10443**，只绑定本机具体公网 IPv6，Telegram 出口只走 IPv6。云安全组和本机防火墙需放行 **IPv6 TCP 10443**；脚本不会改动防火墙规则。
 
+## 安装界面
+
+在交互式终端运行时，按五个步骤显示进度，依次输入端口、FakeTLS 域名（回车使用默认值）；检测到多个公网 IPv6 时通过编号选择。蓝色表示步骤，绿色表示成功，黄色表示提示，红色表示失败；每条信息同时带文字或符号，非彩色终端也可阅读。
+
+APT、下载、服务命令和 mtg 诊断的详细输出保存到 `/var/log/mtproxy-ipv6-install.XXXXXX.log`（随机文件名，权限 600）。命令失败时显示最近 12 行日志和完整路径。诊断提示未通过时可用 `sudo less /var/log/mtproxy-ipv6-install.*.log` 查看。完成页分别列出服务状态、本机监听状态和外网待验证状态，再单独显示连接信息和管理命令。
+
+设置任意 `PORT`、`IPV6`、`TLS_DOMAIN`，或使用 `NONINTERACTIVE=1` / `--non-interactive`，将跳过所有提问；标准输入或输出不是终端时也自动跳过。无人值守示例：
+
+```bash
+PORT=20000 bash /tmp/mtproxy-ipv6-install.sh --non-interactive
+```
+
+禁用颜色可设置 `NO_COLOR=1`。无需 root、无需联网即可预览界面（不安装、不修改系统）：
+
+```bash
+bash /tmp/mtproxy-ipv6-install.sh --preview
+```
+
+交互运行时请使用上方“下载后执行”的命令；通过管道输入脚本会自动采用无人值守模式。
+
 自定义端口（仅允许 **10001–65535**）、IPv6 和 FakeTLS 域名：
 
 ```bash
