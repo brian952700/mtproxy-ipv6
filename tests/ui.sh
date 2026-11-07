@@ -34,8 +34,17 @@ cat >>"$tmp/version-check.sh" <<'EOF'
 tmp=$TEST_TMP
 . "$tmp/os-release"
 run() { printf '%s\n' "$@"; }
+arch=amd64
 EOF
-awk 'index($0,"run ")==1 && index($0,"api.github.com/repos/9seconds/mtg/releases/tags/") {print}' install.sh >>"$tmp/version-check.sh"
+awk '/^release_base=/ {copy=1} copy {print} /^run .*checksums.txt/ {copy=0}' install.sh >>"$tmp/version-check.sh"
 TEST_TMP=$tmp bash "$tmp/version-check.sh" >"$tmp/release-request"
-grep -Fxq 'https://api.github.com/repos/9seconds/mtg/releases/tags/v2.3.0' "$tmp/release-request"
+grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-linux-amd64.tar.gz' "$tmp/release-request"
+grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-checksums.txt' "$tmp/release-request"
+sed 's/arch=amd64/arch=arm64/' "$tmp/version-check.sh" >"$tmp/arm64-check.sh"
+TEST_TMP=$tmp bash "$tmp/arm64-check.sh" >"$tmp/arm64-request"
+grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-linux-arm64.tar.gz' "$tmp/arm64-request"
+if grep -Fq 'api.github.com' install.sh; then
+  echo 'Installer must not depend on the GitHub API' >&2
+  exit 1
+fi
 printf 'Preview, help, invalid options, terminal colors, NO_COLOR and Debian release URL regression passed.\n'
