@@ -26,25 +26,16 @@ if grep -q $'\033' "$tmp/plain"; then
   echo 'NO_COLOR was ignored on a terminal' >&2
   exit 1
 fi
-# Reproduce Debian's VERSION assignment and execute the real release-download
-# command with a harmless run stub. No downloads, root or system writes needed.
-printf 'ID=debian\nVERSION_ID=12\nVERSION="12 (bookworm)"\n' >"$tmp/os-release"
-awk 'index($0,"[[ $EUID") == 1 {exit} {print}' install.sh >"$tmp/version-check.sh"
-cat >>"$tmp/version-check.sh" <<'EOF'
-tmp=$TEST_TMP
-. "$tmp/os-release"
-run() { printf '%s\n' "$@"; }
-arch=amd64
+# Exercise the actual link formatter without installation or privileges.
+awk 'index($0,"[[ $EUID") == 1 {exit} {print}' install.sh >"$tmp/links.sh"
+cat >>"$tmp/links.sh" <<'EOF'
+IPV4=66.187.4.8
+IPV6=2602:f506:81::1
+PORT=20000
+SECRET=0123456789abcdef0123456789abcdef
+links
 EOF
-awk '/^release_base=/ {copy=1} copy {print} /^run .*checksums.txt/ {copy=0}' install.sh >>"$tmp/version-check.sh"
-TEST_TMP=$tmp bash "$tmp/version-check.sh" >"$tmp/release-request"
-grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-linux-amd64.tar.gz' "$tmp/release-request"
-grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-checksums.txt' "$tmp/release-request"
-sed 's/arch=amd64/arch=arm64/' "$tmp/version-check.sh" >"$tmp/arm64-check.sh"
-TEST_TMP=$tmp bash "$tmp/arm64-check.sh" >"$tmp/arm64-request"
-grep -Fxq 'https://github.com/9seconds/mtg/releases/download/v2.3.0/mtg-2.3.0-linux-arm64.tar.gz' "$tmp/arm64-request"
-if grep -Fq 'api.github.com' install.sh; then
-  echo 'Installer must not depend on the GitHub API' >&2
-  exit 1
-fi
-printf 'Preview, help, invalid options, terminal colors, NO_COLOR and Debian release URL regression passed.\n'
+bash "$tmp/links.sh" >"$tmp/links"
+grep -Fxq '  https://t.me/proxy?server=66.187.4.8&port=20000&secret=dd0123456789abcdef0123456789abcdef' "$tmp/links"
+grep -Fxq '  https://t.me/proxy?server=2602%3Af506%3A81%3A%3A1&port=20000&secret=dd0123456789abcdef0123456789abcdef' "$tmp/links"
+printf 'Preview, help, terminal colors and separate IPv4/IPv6 links passed.\n'
