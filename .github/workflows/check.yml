@@ -11,3 +11,45 @@ jobs:
       - run: shellcheck --severity=warning install.sh
       - run: bash -n tests/ui.sh && shellcheck --severity=warning tests/ui.sh
       - run: bash tests/ui.sh
+  official-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        debian: ['12', '13']
+    container: debian:${{ matrix.debian }}
+    steps:
+      - run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates build-essential libssl-dev zlib1g-dev curl python3 openssl
+      - uses: actions/checkout@v4
+      - name: Compile official pinned source
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=$(sed -n 's/^UPSTREAM_COMMIT=//p' install.sh)
+          git clone --no-checkout https://github.com/TelegramMessenger/MTProxy.git /tmp/official-source
+          git -C /tmp/official-source checkout --detach "$commit"
+          make -C /tmp/official-source -j2 CC='gcc -fcommon'
+          test -x /tmp/official-source/objs/bin/mtproto-proxy
+      - name: Verify official IPv4 and IPv6 listeners
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/official-source
+          curl -fLsS --retry 3 https://core.telegram.org/getProxySecret -o proxy-secret
+          curl -fLsS --retry 3 https://core.telegram.org/getProxyConfig -o proxy-multi.conf
+          objs/bin/mtproto-proxy -6 -u nobody -p 18888 -H 20443 -S "$(openssl rand -hex 16)" --aes-pwd proxy-secret proxy-multi.conf -M 1 >proxy.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          python3 - <<'PY'
+          import socket,time
+          for host in ('127.0.0.1','::1'):
+              for attempt in range(20):
+                  try:
+                      with socket.create_connection((host,20443),timeout=1): pass
+                      print(f'TCP listener reachable: {host}:20443')
+                      break
+                  except OSError:
+                      if attempt == 19:
+                          print(open('proxy.log').read())
+                          raise
+                      time.sleep(1)
+          PY
