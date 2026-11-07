@@ -43,7 +43,7 @@ PORT=20000 IPV6='你的公网IPv6' TLS_DOMAIN='www.cloudflare.com' bash /tmp/mtp
 ## 网络要求
 
 - 客户端必须能访问公网 IPv6；VPS 必须能经 IPv6 连接 Telegram 和所选 FakeTLS 域名。
-- **运行走 IPv6，不等于下载源支持 IPv6。** 安装时 Debian 软件源、GitHub API 和发布附件必须可达。没有 IPv4 的 VPS 需要可用 NAT64/DNS64、HTTP(S) 下载代理等联网条件。脚本不会自动使用第三方镜像或更改 DNS。
+- **运行走 IPv6，不等于下载源支持 IPv6。** 安装时 Debian 软件源、GitHub 发布附件必须可达。脚本直接下载固定版本的官方发布包和校验清单，不请求 GitHub API。没有 IPv4 的 VPS 需要可用 NAT64/DNS64、HTTP(S) 下载代理等联网条件。脚本不会自动使用第三方镜像或更改 DNS。
 - 如需通过已有代理下载 GitHub，运行前设置 `https_proxy`（例如 `export https_proxy=http://[代理IPv6]:3128`）。APT 代理须按系统设置另行配置。脚本的 IPv6 出口检测会主动绕过下载代理。
 - DNS 使用系统解析器；DNS、APT 和安装下载的地址族取决于系统配置。`only-ipv6` 限制的是 mtg 连接 Telegram 的出口。
 - 高端口满足此脚本需求，但 FakeTLS 使用高端口不等于普通 HTTPS 的 443，不能承诺长期可用。

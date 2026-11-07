@@ -153,23 +153,12 @@ case $(dpkg --print-architecture) in
   *) die '仅支持 amd64 / arm64。';;
 esac
 step 3 '下载并校验'
-run '读取官方版本信息' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "https://api.github.com/repos/9seconds/mtg/releases/tags/$MTG_VERSION" -o "$tmp/release.json"
-python3 - "$tmp/release.json" "$arch" "$tmp" <<'PY'
-import json,pathlib,sys
-release=json.load(open(sys.argv[1]))
-arch=sys.argv[2]; root=pathlib.Path(sys.argv[3])
-assets=release['assets']
-def choose(predicate):
-    found=[a for a in assets if predicate(a['name'].lower())]
-    if len(found)!=1: sys.exit('无法唯一匹配官方发布附件，请检查发布格式。')
-    return found[0]
-binary=choose(lambda n: n.endswith('-linux-'+arch+'.tar.gz'))
-checks=choose(lambda n: 'checksum' in n and n.endswith('.txt'))
-for key,value in [('archive-url',binary['browser_download_url']),('archive-name',binary['name']),('checks-url',checks['browser_download_url'])]:
-    (root/key).write_text(value)
-PY
-run "下载 mtg $MTG_VERSION ($arch)" curl -fLsS --retry 3 --connect-timeout 15 --max-time 300 "$(cat "$tmp/archive-url")" -o "$tmp/archive.tar.gz"
-run '下载 SHA256 校验清单' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "$(cat "$tmp/checks-url")" -o "$tmp/checksums.txt"
+# Fixed upstream release filenames avoid unauthenticated GitHub API requests.
+release_base="https://github.com/9seconds/mtg/releases/download/$MTG_VERSION"
+archive_name="mtg-${MTG_VERSION#v}-linux-${arch}.tar.gz"
+printf '%s' "$archive_name" > "$tmp/archive-name"
+run "下载 mtg $MTG_VERSION ($arch)" curl -fLsS --retry 3 --connect-timeout 15 --max-time 300 "$release_base/$archive_name" -o "$tmp/archive.tar.gz"
+run '下载 SHA256 校验清单' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "$release_base/mtg-${MTG_VERSION#v}-checksums.txt" -o "$tmp/checksums.txt"
 python3 - "$tmp" <<'PY'
 import hashlib,pathlib,sys,tarfile
 p=pathlib.Path(sys.argv[1]); name=(p/'archive-name').read_text()
