@@ -29,13 +29,12 @@ fi
 # Exercise the actual link formatter without installation or privileges.
 awk 'index($0,"[[ $EUID") == 1 {exit} {print}' install.sh >"$tmp/links.sh"
 cat >>"$tmp/links.sh" <<'EOF'
-IPV4=66.187.4.8
 IPV6=2602:f506:81::1
 PORT=20000
 SECRET=0123456789abcdef0123456789abcdef
 links
 EOF
 bash "$tmp/links.sh" >"$tmp/links"
-grep -Fxq '  https://t.me/proxy?server=66.187.4.8&port=20000&secret=dd0123456789abcdef0123456789abcdef' "$tmp/links"
 grep -Fxq '  https://t.me/proxy?server=2602%3Af506%3A81%3A%3A1&port=20000&secret=dd0123456789abcdef0123456789abcdef' "$tmp/links"
-printf 'Preview, help, terminal colors and separate IPv4/IPv6 links passed.\n'
+if grep -Fq 'IPv4 链接' "$tmp/links"; then exit 1; fi
+printf 'Preview, help, terminal colors and IPv6-only link passed.\n'
