@@ -26,4 +26,16 @@ if grep -q $'\033' "$tmp/plain"; then
   echo 'NO_COLOR was ignored on a terminal' >&2
   exit 1
 fi
-printf 'Preview, help, invalid options, terminal colors and NO_COLOR passed.\n'
+# Reproduce Debian's VERSION assignment and execute the real release-download
+# command with a harmless run stub. No downloads, root or system writes needed.
+printf 'ID=debian\nVERSION_ID=12\nVERSION="12 (bookworm)"\n' >"$tmp/os-release"
+awk 'index($0,"[[ $EUID") == 1 {exit} {print}' install.sh >"$tmp/version-check.sh"
+cat >>"$tmp/version-check.sh" <<'EOF'
+tmp=$1
+. "$tmp/os-release"
+run() { printf '%s\n' "$@"; }
+EOF
+awk 'index($0,"run ")==1 && index($0,"api.github.com/repos/9seconds/mtg/releases/tags/") {print}' install.sh >>"$tmp/version-check.sh"
+bash "$tmp/version-check.sh" "$tmp" >"$tmp/release-request"
+grep -Fxq 'https://api.github.com/repos/9seconds/mtg/releases/tags/v2.3.0' "$tmp/release-request"
+printf 'Preview, help, invalid options, terminal colors, NO_COLOR and Debian release URL regression passed.\n'
