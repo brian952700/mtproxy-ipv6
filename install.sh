@@ -113,7 +113,8 @@ case ${ID:-} in
   *) die '仅支持 Debian 和 Alpine。';;
 esac
 [[ ! -L $BASE ]] || die '安装目录不能是符号链接。'
-LOG_FILE=$(mktemp /var/log/telegram-mtproxy-install.XXXXXX.log)
+mkdir -p /var/log
+LOG_FILE=$(mktemp /var/log/telegram-mtproxy-install.log.XXXXXX)
 tmp=$(mktemp -d)
 ok "$ID $VERSION_ID / x86_64"
 if [[ $init == openrc ]]; then
