@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
-VERSION=v2.3.0
+MTG_VERSION=v2.3.0
 INTERACTIVE=0
 [[ -t 0 && -t 1 && ${NONINTERACTIVE:-0} != 1 && ! ${PORT+x} && ! ${IPV6+x} && ! ${TLS_DOMAIN+x} ]] && INTERACTIVE=1
 PORT=${PORT:-10443}
@@ -44,7 +44,7 @@ run() {
 }
 header() {
   printf '\n%s  Telegram IPv6 代理安装%s\n' "$BOLD" "$RESET"
-  printf '  Debian 12+ · mtg %s · systemd\n' "$VERSION"
+  printf '  Debian 12+ · mtg %s · systemd\n' "$MTG_VERSION"
   line
 }
 result() {
@@ -153,7 +153,7 @@ case $(dpkg --print-architecture) in
   *) die '仅支持 amd64 / arm64。';;
 esac
 step 3 '下载并校验'
-run '读取官方版本信息' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "https://api.github.com/repos/9seconds/mtg/releases/tags/$VERSION" -o "$tmp/release.json"
+run '读取官方版本信息' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "https://api.github.com/repos/9seconds/mtg/releases/tags/$MTG_VERSION" -o "$tmp/release.json"
 python3 - "$tmp/release.json" "$arch" "$tmp" <<'PY'
 import json,pathlib,sys
 release=json.load(open(sys.argv[1]))
@@ -168,7 +168,7 @@ checks=choose(lambda n: 'checksum' in n and n.endswith('.txt'))
 for key,value in [('archive-url',binary['browser_download_url']),('archive-name',binary['name']),('checks-url',checks['browser_download_url'])]:
     (root/key).write_text(value)
 PY
-run "下载 mtg $VERSION ($arch)" curl -fLsS --retry 3 --connect-timeout 15 --max-time 300 "$(cat "$tmp/archive-url")" -o "$tmp/archive.tar.gz"
+run "下载 mtg $MTG_VERSION ($arch)" curl -fLsS --retry 3 --connect-timeout 15 --max-time 300 "$(cat "$tmp/archive-url")" -o "$tmp/archive.tar.gz"
 run '下载 SHA256 校验清单' curl -fLsS --retry 3 --connect-timeout 15 --max-time 90 "$(cat "$tmp/checks-url")" -o "$tmp/checksums.txt"
 python3 - "$tmp" <<'PY'
 import hashlib,pathlib,sys,tarfile
