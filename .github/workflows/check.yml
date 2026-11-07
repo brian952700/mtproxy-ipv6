@@ -29,9 +29,12 @@ jobs:
           commit=$(sed -n 's/^UPSTREAM_COMMIT=//p' install.sh)
           git clone --no-checkout https://github.com/TelegramMessenger/MTProxy.git /tmp/official-source
           git -C /tmp/official-source checkout --detach "$commit"
+          sed -n '/^patch_ipv6_listener()/,/^}/p' install.sh > /tmp/patch-listener.sh
+          source /tmp/patch-listener.sh
+          patch_ipv6_listener /tmp/official-source
           make -C /tmp/official-source -j2 CC='gcc -fcommon'
           test -x /tmp/official-source/objs/bin/mtproto-proxy
-      - name: Verify official IPv4 and IPv6 listeners
+      - name: Verify IPv6 listener and IPv4 refusal
         shell: bash
         run: |
           set -euo pipefail
@@ -43,7 +46,7 @@ jobs:
           trap 'kill "$pid" 2>/dev/null || true' EXIT
           python3 - <<'PY'
           import socket,time
-          for host in ('127.0.0.1','::1'):
+          for host in ('::1',):
               for attempt in range(20):
                   try:
                       with socket.create_connection((host,20443),timeout=1): pass
@@ -54,4 +57,10 @@ jobs:
                           print(open('proxy.log').read())
                           raise
                       time.sleep(1)
+          try:
+              with socket.create_connection(('127.0.0.1',20443),timeout=2): pass
+          except ConnectionRefusedError:
+              print('IPv4 loopback refused as required')
+          else:
+              raise AssertionError('IPv4 client connection unexpectedly accepted')
           PY
